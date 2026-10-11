@@ -1,0 +1,102 @@
+name: Run smol-wf
+description: Install smol-wf and run a workflow from the checked-out repository
+author: b4fun
+branding:
+  icon: play
+  color: blue
+
+inputs:
+  workflow:
+    description: Workflow script path, relative to working-directory
+    required: true
+  provider:
+    description: smol-wf agent provider (debug, codex, claude-code, opencode, or pi)
+    required: false
+    default: debug
+  smol-wf-version:
+    description: smol-wf release tag to install
+    required: false
+    default: v0.3.4
+  args-json:
+    description: Workflow arguments as a JSON object
+    required: false
+    default: '{}'
+  working-directory:
+    description: Directory containing the workflow script, relative to GITHUB_WORKSPACE
+    required: false
+    default: .
+  db-path:
+    description: SQLite database path; defaults to a temporary runner path
+    required: false
+    default: ''
+
+outputs:
+  result-file:
+    description: Path to the JSON run report
+    value: ${{ steps.run.outputs.result-file }}
+  run-id:
+    description: smol-wf run ID
+    value: ${{ steps.run.outputs.run-id }}
+  db-path:
+    description: Path to the SQLite workflow database
+    value: ${{ steps.run.outputs.db-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install smol-wf
+      shell: bash
+      env:
+        SMOL_WF_VERSION: ${{ inputs.smol-wf-version }}
+      run: |
+        set -euo pipefail
+        if [[ ! "$SMOL_WF_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+          echo "smol-wf-version must be a release tag such as v0.3.4" >&2
+          exit 2
+        fi
+        install_dir="$RUNNER_TEMP/smol-wf/bin"
+        mkdir -p "$install_dir"
+        curl -fsSL "https://raw.githubusercontent.com/b4fun/smol-workflows/${SMOL_WF_VERSION}/install.sh" \
+          | bash -s -- --version "$SMOL_WF_VERSION" --dir "$install_dir"
+        echo "$install_dir" >> "$GITHUB_PATH"
+
+    - name: Prepare workflow arguments
+      shell: bash
+      env:
+        SMOL_WF_ARGS_JSON: ${{ inputs.args-json }}
+      run: |
+        set -euo pipefail
+        args_file="$RUNNER_TEMP/smol-wf/args.json"
+        mkdir -p "$(dirname "$args_file")"
+        printf '%s' "$SMOL_WF_ARGS_JSON" | jq -e 'select(type == "object")' > "$args_file"
+
+    - name: Run workflow
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SMOL_WF_WORKFLOW: ${{ inputs.workflow }}
+        SMOL_WF_PROVIDER: ${{ inputs.provider }}
+        SMOL_WF_DB_INPUT: ${{ inputs.db-path }}
+      run: |
+        set -euo pipefail
+        args_file="$RUNNER_TEMP/smol-wf/args.json"
+        result_file="$RUNNER_TEMP/smol-wf/result.json"
+        db_path="$SMOL_WF_DB_INPUT"
+        if [[ -z "$db_path" ]]; then
+          db_path="$RUNNER_TEMP/smol-wf/workflows.db"
+        elif [[ "$db_path" != /* ]]; then
+          db_path="$GITHUB_WORKSPACE/$db_path"
+        fi
+        mkdir -p "$(dirname "$db_path")" "$(dirname "$result_file")"
+
+        smol-wf run "$SMOL_WF_WORKFLOW" \
+          --agent-provider "$SMOL_WF_PROVIDER" \
+          --db "$db_path" \
+          --args-from-file "$args_file" \
+          > "$result_file"
+
+        run_id="$(jq -r '.runID // empty' "$result_file")"
+        echo "result-file=$result_file" >> "$GITHUB_OUTPUT"
+        echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+        echo "db-path=$db_path" >> "$GITHUB_OUTPUT"

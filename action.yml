@@ -14,7 +14,7 @@ inputs:
     required: false
     default: debug
   smol-wf-version:
-    description: smol-wf release tag to install
+    description: smol-wf release tag to install, or latest for the latest stable release
     required: false
     default: v0.3.4
   args:
@@ -50,8 +50,12 @@ runs:
         SMOL_WF_VERSION: ${{ inputs.smol-wf-version }}
       run: |
         set -euo pipefail
+        if [[ "$SMOL_WF_VERSION" == "latest" ]]; then
+          SMOL_WF_VERSION="$(curl -fsSL https://api.github.com/repos/b4fun/smol-workflows/releases/latest | jq -er '.tag_name | select(type == "string" and length > 0)')"
+          echo "Resolved smol-wf latest release to $SMOL_WF_VERSION"
+        fi
         if [[ ! "$SMOL_WF_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-          echo "smol-wf-version must be a release tag such as v0.3.4" >&2
+          echo "smol-wf-version must be 'latest' or a release tag such as v0.3.4" >&2
           exit 2
         fi
         install_dir="$RUNNER_TEMP/smol-wf/bin"

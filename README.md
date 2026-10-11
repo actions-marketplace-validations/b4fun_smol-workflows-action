@@ -29,6 +29,8 @@ steps:
 
 The runner needs Bash, `curl`, Ruby with its standard-library YAML parser, and `jq`; GitHub-hosted Ubuntu and macOS runners include these tools.
 
+Set `smol-wf-version: latest` to install the latest stable smol-wf release. This resolves the version each time the action runs; use an explicit release tag when you want runs to stay on the same CLI version.
+
 The default provider is `debug`, which does not call an LLM. Supported provider names are `debug`, `codex`, `claude-code`, `opencode`, and `pi`.
 
 ## Inputs
@@ -37,7 +39,7 @@ The default provider is `debug`, which does not call an LLM. Supported provider 
 | --- | --- | --- | --- |
 | `workflow` | Yes | — | Workflow script path relative to `working-directory`. |
 | `provider` | No | `debug` | smol-wf agent provider. |
-| `smol-wf-version` | No | `v0.3.4` | Versioned smol-wf release tag to install. |
+| `smol-wf-version` | No | `v0.3.4` | Versioned smol-wf release tag to install, or `latest` to resolve the latest stable release at run time. |
 | `args` | No | `{}` | Workflow arguments as a YAML mapping. Nested mappings and lists are supported. |
 | `working-directory` | No | `.` | Workflow working directory relative to `GITHUB_WORKSPACE`. |
 | `db-path` | No | Runner temp directory | SQLite database path. Relative paths resolve from `GITHUB_WORKSPACE`. |
@@ -69,7 +71,7 @@ The root `action.yml` is the Marketplace action manifest. Publish a GitHub relea
 
 ## Tests
 
-The `Test action` workflow runs the action with a nested YAML argument mapping and the built-in `debug` provider. It checks that the structured values survive argument parsing and appear in the JSON run report; no provider credentials or paid model calls are needed.
+The `Test action` workflow runs the action with the `latest` CLI alias, a nested YAML argument mapping, and the built-in `debug` provider. It checks that the structured values survive argument parsing and appear in the JSON run report; no provider credentials or paid model calls are needed.
 
 ## License
 

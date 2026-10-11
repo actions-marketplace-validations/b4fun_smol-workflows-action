@@ -20,6 +20,7 @@ jobs:
         with:
           workflow: tests/fixtures/dump-args.mjs
           provider: debug
+          smol-wf-version: latest
           args: |
             target: "pull request #42"
             options:

@@ -18,13 +18,16 @@ steps:
       workflow: ./workflows/review.mjs
       provider: pi
       smol-wf-version: v0.3.4
-      args-json: '{"target":"the current pull request"}'
+      args: |
+        target: the current pull request
 
   - name: Display run ID
     run: echo "smol-wf run ${{ steps.smol-wf.outputs.run-id }} completed"
 ```
 
 `actions/checkout` is required because the workflow script is read from the caller's workspace. The selected provider executable and its authentication must also be available on the runner. This action installs `smol-wf`; it does not install or authenticate provider CLIs. Provider-specific setup varies, so add those steps before invoking this action and pass credentials through `env` using GitHub Secrets.
+
+The runner needs Bash, `curl`, Ruby with its standard-library YAML parser, and `jq`; GitHub-hosted Ubuntu and macOS runners include these tools.
 
 The default provider is `debug`, which does not call an LLM. Supported provider names are `debug`, `codex`, `claude-code`, `opencode`, and `pi`.
 
@@ -35,7 +38,7 @@ The default provider is `debug`, which does not call an LLM. Supported provider 
 | `workflow` | Yes | — | Workflow script path relative to `working-directory`. |
 | `provider` | No | `debug` | smol-wf agent provider. |
 | `smol-wf-version` | No | `v0.3.4` | Versioned smol-wf release tag to install. |
-| `args-json` | No | `{}` | JSON object passed as workflow arguments. |
+| `args` | No | `{}` | Workflow arguments as a YAML mapping. Nested mappings and lists are supported. |
 | `working-directory` | No | `.` | Workflow working directory relative to `GITHUB_WORKSPACE`. |
 | `db-path` | No | Runner temp directory | SQLite database path. Relative paths resolve from `GITHUB_WORKSPACE`. |
 

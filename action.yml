@@ -17,8 +17,8 @@ inputs:
     description: smol-wf release tag to install
     required: false
     default: v0.3.4
-  args-json:
-    description: Workflow arguments as a JSON object
+  args:
+    description: Workflow arguments as a YAML mapping
     required: false
     default: '{}'
   working-directory:
@@ -63,12 +63,16 @@ runs:
     - name: Prepare workflow arguments
       shell: bash
       env:
-        SMOL_WF_ARGS_JSON: ${{ inputs.args-json }}
+        SMOL_WF_ARGS: ${{ inputs.args }}
       run: |
         set -euo pipefail
         args_file="$RUNNER_TEMP/smol-wf/args.json"
         mkdir -p "$(dirname "$args_file")"
-        printf '%s' "$SMOL_WF_ARGS_JSON" | jq -e 'select(type == "object")' > "$args_file"
+        printf '%s' "$SMOL_WF_ARGS" | ruby -rjson -ryaml -e '
+          value = YAML.safe_load(STDIN.read, permitted_classes: [], permitted_symbols: [], aliases: false)
+          abort("args must be a YAML mapping") unless value.is_a?(Hash)
+          STDOUT.write(JSON.generate(value))
+        ' > "$args_file"
 
     - name: Run workflow
       id: run

@@ -67,6 +67,10 @@ The result and default database are under `$RUNNER_TEMP/smol-wf/` and are remove
 
 The root `action.yml` is the Marketplace action manifest. Publish a GitHub release from this repository and tag compatible action versions (for example, `v1.0.0`, plus a moving `v1` major tag). Consumers can pin the full release tag or commit SHA. The `smol-wf-version` input separately selects the CLI release installed by the action.
 
+## Tests
+
+The `Test action` workflow runs the action with a nested YAML argument mapping and the built-in `debug` provider. It checks that the structured values survive argument parsing and appear in the JSON run report; no provider credentials or paid model calls are needed.
+
 ## License
 
 MIT

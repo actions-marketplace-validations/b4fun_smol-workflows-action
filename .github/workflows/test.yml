@@ -1,0 +1,42 @@
+name: Test action
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  action-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out action
+        uses: actions/checkout@v4
+
+      - name: Run action with nested YAML arguments and debug provider
+        id: run
+        uses: ./
+        with:
+          workflow: tests/fixtures/dump-args.mjs
+          provider: debug
+          args: |
+            target: "pull request #42"
+            options:
+              enabled: true
+              retries: 3
+            labels:
+              - backend
+              - needs-review
+
+      - name: Assert workflow arguments and report structure
+        env:
+          RESULT_FILE: ${{ steps.run.outputs.result-file }}
+          RUN_ID: ${{ steps.run.outputs.run-id }}
+        run: |
+          set -euo pipefail
+          actual="$(jq -cS '.results.dump' "$RESULT_FILE")"
+          expected='{"labels":["backend","needs-review"],"options":{"enabled":true,"retries":3},"target":"pull request #42"}'
+          test "$actual" = "$expected"
+          test -n "$RUN_ID"
+          jq -e '.runID == env.RUN_ID and (.tokenUsage.totalTokens >= 0)' "$RESULT_FILE" >/dev/null
